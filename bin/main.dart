@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
-enum TokenType { INTEGER, PLUS, MINUS, EOF, MUL, DIV }
+enum TokenType { INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF }
 
 const INTEGER = TokenType.INTEGER;
 const PLUS = TokenType.PLUS;
 const MINUS = TokenType.MINUS;
-const EOF = TokenType.EOF;
 const MUL = TokenType.MUL;
 const DIV = TokenType.DIV;
+const LPAREN = TokenType.LPAREN;
+const RPAREN = TokenType.RPAREN;
+const EOF = TokenType.EOF;
 
 class Token {
   const Token(this.type, this.value);
@@ -107,6 +109,16 @@ class Lexer {
         return Token(TokenType.DIV, '/');
       }
 
+      if (currentChar == '(') {
+        advance();
+        return Token(TokenType.LPAREN, '(');
+      }
+
+      if (currentChar == ')') {
+        advance();
+        return Token(TokenType.RPAREN, ')');
+      }
+
       error();
     }
 
@@ -138,11 +150,19 @@ class Interpreter {
     }
   }
 
-  /// [factor] : [INTEGER]
+  /// [factor] : [INTEGER] | [LPAREN] [expr] [RPAREN]
   int factor() {
     var token = currentToken;
-    eat(TokenType.INTEGER);
-    return token.value;
+
+    if (token.type == INTEGER) {
+      eat(INTEGER);
+      return token.value;
+    }
+
+    eat(LPAREN);
+    var result = expr();
+    eat(RPAREN);
+    return result;
   }
 
   /// [term] : [factor] (([MUL] | [DIV]) [factor])*
