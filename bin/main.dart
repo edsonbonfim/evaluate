@@ -1,12 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
-enum TokenType { INTEGER, PLUS, MINUS, EOF }
+enum TokenType { INTEGER, PLUS, MINUS, EOF, MUL, DIV }
+
+const INTEGER = TokenType.INTEGER;
+const PLUS = TokenType.PLUS;
+const MINUS = TokenType.MINUS;
+const EOF = TokenType.EOF;
+const MUL = TokenType.MUL;
+const DIV = TokenType.DIV;
 
 class Token {
   const Token(this.type, this.value);
 
-  /// Token type: INTEGER, PLUS, MINUS, EOF
   final TokenType type;
 
   /// Token value: non-negative integer value, '+', '-', or null
@@ -15,14 +21,15 @@ class Token {
   /// String representation of the class instance
   /// Example: Token(INTEGER, 3)
   ///          Token(PLUS, '+')
+  ///          Token(MUL, '*')
   @override
   String toString() {
     return 'Token($type, ${value.toString()})';
   }
 }
 
-class Interpreter {
-  Interpreter(this.text) : assert(text != null) {
+class Lexer {
+  Lexer(this.text) : assert(text != null && text.isNotEmpty) {
     currentChar = text[pos];
   }
 
@@ -32,12 +39,9 @@ class Interpreter {
   /// [pos] is an index into [text]
   int pos = 0;
 
-  /// Current token instance
-  Token currentToken;
-
   String currentChar;
 
-  void error() => throw FormatException('Invalid sintax');
+  void error() => throw FormatException('Invalid character');
 
   /// Advance the [pos] pointer and set the [currentChar] variable
   void advance() {
@@ -93,46 +97,86 @@ class Interpreter {
         return Token(TokenType.MINUS, '-');
       }
 
+      if (currentChar == '*') {
+        advance();
+        return Token(TokenType.MUL, '*');
+      }
+
+      if (currentChar == '/') {
+        advance();
+        return Token(TokenType.DIV, '/');
+      }
+
       error();
     }
 
     return Token(TokenType.EOF, null);
   }
+}
+
+class Interpreter {
+  Interpreter(this.lexer) : assert(lexer != null) {
+    // Set current token to the first token taken from the input
+    currentToken = lexer.getNextToken();
+  }
+
+  final Lexer lexer;
+
+  /// Current token instance
+  Token currentToken;
+
+  void error() => throw FormatException('Invalid syntax');
 
   /// Compare the current token type with the passed token type and if they match
   /// then "eat" the current token and assign the next token to the [currentToken],
   /// otherwise raise an exception.
   void eat(TokenType tokenType) {
     if (currentToken.type == tokenType) {
-      currentToken = getNextToken();
+      currentToken = lexer.getNextToken();
     } else {
       error();
     }
   }
 
-  /// Return an [TokenType.INTEGER] token value.
-  int term() {
+  /// [factor] : [INTEGER]
+  int factor() {
     var token = currentToken;
     eat(TokenType.INTEGER);
     return token.value;
   }
 
-  /// Arithmetic expression parser/interpreter.
-  int expr() {
-    // Set current token to the first token taken from the input
-    currentToken = getNextToken();
+  /// [term] : [factor] (([MUL] | [DIV]) [factor])*
+  int term() {
+    var result = factor();
 
+    while (currentToken.type == MUL || currentToken.type == DIV) {
+      var token = currentToken;
+
+      if (token.type == MUL) {
+        eat(MUL);
+        result *= factor();
+      } else if (token.type == DIV) {
+        eat(DIV);
+        result ~/= factor();
+      }
+    }
+
+    return result;
+  }
+
+  /// [expr] : [term] (([PLUS] | [MINUS]) [term])*
+  int expr() {
     var result = term();
 
-    while (currentToken.type == TokenType.PLUS ||
-        currentToken.type == TokenType.MINUS) {
+    while (currentToken.type == PLUS || currentToken.type == MINUS) {
       var token = currentToken;
-      if (token.type == TokenType.PLUS) {
-        eat(TokenType.PLUS);
-        result = result + term();
-      } else if (token.type == TokenType.MINUS) {
-        eat(TokenType.MINUS);
-        result = result - term();
+
+      if (token.type == PLUS) {
+        eat(PLUS);
+        result += term();
+      } else if (token.type == MINUS) {
+        eat(MINUS);
+        result -= term();
       }
     }
 
@@ -145,7 +189,8 @@ void main(List<String> args) {
     try {
       stdout.write('calc> ');
       var text = stdin.readLineSync(encoding: Encoding.getByName('utf-8'));
-      var interpreter = Interpreter(text);
+      var lexer = Lexer(text);
+      var interpreter = Interpreter(lexer);
       var result = interpreter.expr();
       print(result.toString());
     } on FormatException catch (ex) {
