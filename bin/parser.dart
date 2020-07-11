@@ -3,9 +3,9 @@ import 'lexer.dart';
 abstract class NodeVisitor {
   const NodeVisitor();
 
-  int visitUnaryOp(UnaryOp node);
-  int visitBinOp(BinOp node);
-  int visitNum(Num node);
+  double visitUnaryOp(UnaryOp node);
+  double visitBinOp(BinOp node);
+  double visitNum(Num node);
 }
 
 abstract class AST {
@@ -13,7 +13,7 @@ abstract class AST {
 
   Token get token;
 
-  int accept(NodeVisitor visitor);
+  double visit(NodeVisitor visitor);
 }
 
 class UnaryOp extends AST {
@@ -23,7 +23,7 @@ class UnaryOp extends AST {
   final AST expr;
 
   @override
-  int accept(NodeVisitor visitor) => visitor.visitUnaryOp(this);
+  double visit(NodeVisitor visitor) => visitor.visitUnaryOp(this);
 
   @override
   Token get token => op;
@@ -40,7 +40,7 @@ class BinOp extends AST {
   Token get token => op;
 
   @override
-  int accept(NodeVisitor visitor) => visitor.visitBinOp(this);
+  double visit(NodeVisitor visitor) => visitor.visitBinOp(this);
 }
 
 class Num extends AST {
@@ -49,10 +49,10 @@ class Num extends AST {
   @override
   final Token token;
 
-  int get value => token.value;
+  double get value => token.value;
 
   @override
-  int accept(NodeVisitor visitor) => visitor.visitNum(this);
+  double visit(NodeVisitor visitor) => visitor.visitNum(this);
 }
 
 class Parser {
@@ -79,7 +79,7 @@ class Parser {
     }
   }
 
-  /// [factor] : ([PLUS] | [MINUS]) [factor] | [INTEGER] | [LPAREN] [expr] [RPAREN]
+  /// [factor] : ([PLUS] | [MINUS]) [factor] | [NUMBER] | [LPAREN] [expr] [RPAREN]
   AST factor() {
     var token = currentToken;
 
@@ -93,8 +93,8 @@ class Parser {
       return UnaryOp(token, factor());
     }
 
-    if (token.type == INTEGER) {
-      eat(INTEGER);
+    if (token.type == NUMBER) {
+      eat(NUMBER);
       return Num(token);
     }
 

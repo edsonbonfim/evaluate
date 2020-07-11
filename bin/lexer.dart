@@ -1,12 +1,13 @@
-enum TokenType { INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF }
+enum TokenType { NUMBER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, DOT, EOF }
 
-const INTEGER = TokenType.INTEGER;
+const NUMBER = TokenType.NUMBER;
 const PLUS = TokenType.PLUS;
 const MINUS = TokenType.MINUS;
 const MUL = TokenType.MUL;
 const DIV = TokenType.DIV;
 const LPAREN = TokenType.LPAREN;
 const RPAREN = TokenType.RPAREN;
+const DOT = TokenType.DOT;
 const EOF = TokenType.EOF;
 
 class Token {
@@ -60,16 +61,17 @@ class Lexer {
     }
   }
 
-  /// Return a (multidigit) integer consumed from the input
-  int integer() {
-    var result = '';
+  /// Return a (multidigit) number consumed from the input
+  double number([String start = '']) {
+    var result = start;
 
-    while (currentChar != null && int.tryParse(currentChar) != null) {
+    while (currentChar != null &&
+        (int.tryParse(currentChar) != null || currentChar == '.')) {
       result += currentChar;
       advance();
     }
 
-    return int.parse(result);
+    return double.parse(result);
   }
 
   /// Lexical analyser (alson knows as scanner or tokenizer)
@@ -83,42 +85,47 @@ class Lexer {
       }
 
       if (int.tryParse(currentChar) != null) {
-        return Token(TokenType.INTEGER, integer());
+        return Token(NUMBER, number());
+      }
+
+      if (currentChar == '.') {
+        advance();
+        return Token(NUMBER, number('.'));
       }
 
       if (currentChar == '+') {
         advance();
-        return Token(TokenType.PLUS, '+');
+        return Token(PLUS, '+');
       }
 
       if (currentChar == '-') {
         advance();
-        return Token(TokenType.MINUS, '-');
+        return Token(MINUS, '-');
       }
 
       if (currentChar == '*') {
         advance();
-        return Token(TokenType.MUL, '*');
+        return Token(MUL, '*');
       }
 
       if (currentChar == '/') {
         advance();
-        return Token(TokenType.DIV, '/');
+        return Token(DIV, '/');
       }
 
       if (currentChar == '(') {
         advance();
-        return Token(TokenType.LPAREN, '(');
+        return Token(LPAREN, '(');
       }
 
       if (currentChar == ')') {
         advance();
-        return Token(TokenType.RPAREN, ')');
+        return Token(RPAREN, ')');
       }
 
       error();
     }
 
-    return Token(TokenType.EOF, null);
+    return Token(EOF, null);
   }
 }
