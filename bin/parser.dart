@@ -1,0 +1,122 @@
+import 'lexer.dart';
+
+abstract class NodeVisitor {
+  const NodeVisitor();
+
+  int visitBinOp(BinOp node);
+  int visitNum(Num node);
+}
+
+abstract class AST {
+  const AST();
+
+  Token get token;
+
+  int accept(NodeVisitor visitor);
+}
+
+class BinOp extends AST {
+  const BinOp(this.esq, this.op, this.dir)
+      : assert(esq != null && op != null && dir != null);
+
+  final AST esq, dir;
+  final Token op;
+
+  @override
+  Token get token => op;
+
+  @override
+  int accept(NodeVisitor visitor) => visitor.visitBinOp(this);
+}
+
+class Num extends AST {
+  const Num(this.token) : assert(token != null);
+
+  @override
+  final Token token;
+
+  int get value => token.value;
+
+  @override
+  int accept(NodeVisitor visitor) => visitor.visitNum(this);
+}
+
+class Parser {
+  Parser(this.lexer) : assert(lexer != null) {
+    // Set current token to the first token taken from the input
+    currentToken = lexer.getNextToken();
+  }
+
+  final Lexer lexer;
+
+  /// Current token instance
+  Token currentToken;
+
+  void error() => throw FormatException('Invalid syntax');
+
+  /// Compare the current token type with the passed token type and if they match
+  /// then "eat" the current token and assign the next token to the [currentToken],
+  /// otherwise raise an exception.
+  void eat(TokenType tokenType) {
+    if (currentToken.type == tokenType) {
+      currentToken = lexer.getNextToken();
+    } else {
+      error();
+    }
+  }
+
+  /// [factor] : [INTEGER] | [LPAREN] [expr] [RPAREN]
+  AST factor() {
+    var token = currentToken;
+
+    if (token.type == INTEGER) {
+      eat(INTEGER);
+      return Num(token);
+    }
+
+    eat(LPAREN);
+    var node = expr();
+    eat(RPAREN);
+    return node;
+  }
+
+  /// [term] : [factor] (([MUL] | [DIV]) [factor])*
+  AST term() {
+    var node = factor();
+
+    while (currentToken.type == MUL || currentToken.type == DIV) {
+      var token = currentToken;
+
+      if (token.type == MUL) {
+        eat(MUL);
+      } else if (token.type == DIV) {
+        eat(DIV);
+      }
+
+      node = BinOp(node, token, factor());
+    }
+
+    return node;
+  }
+
+  /// [expr] : [term] (([PLUS] | [MINUS]) [term])*
+  AST expr() {
+    var node = term();
+
+    while (currentToken.type == PLUS || currentToken.type == MINUS) {
+      var token = currentToken;
+
+      if (token.type == PLUS) {
+        eat(PLUS);
+      } else if (token.type == MINUS) {
+        eat(MINUS);
+      }
+
+      node = BinOp(node, token, term());
+    }
+
+    return node;
+  }
+
+  AST parse() => expr();
+}
