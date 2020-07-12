@@ -1,5 +1,5 @@
 name: evaluate
-description: Evaluate expressions.
+description: Evaluate math expressions.
 version: 0.0.1
 author: Edson Onildo <inbox.edsononildo@gmail.com>
 homepage: https://github.com/edsonbonfim/evaluate
