@@ -2,8 +2,8 @@ import 'lexer.dart';
 import 'parser.dart';
 import 'dart:math' as math;
 
-class Interpreter extends NodeVisitor {
-  const Interpreter(this.parser);
+class Evaluator extends NodeVisitor {
+  const Evaluator(this.parser);
 
   final Parser parser;
 
@@ -44,9 +44,8 @@ class Interpreter extends NodeVisitor {
   @override
   double visitNum(Num node) => node.value;
 
-  double interpret() {
+  double evaluate() {
     var tree = parser.parse();
-    // printNode(tree);
     return tree.visit(this);
   }
 }
