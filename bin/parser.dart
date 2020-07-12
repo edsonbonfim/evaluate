@@ -1,4 +1,101 @@
+import 'dart:io';
+import 'dart:math' as math;
+
 import 'lexer.dart';
+
+abstract class Node {
+  const Node();
+
+  final Node left = null;
+  final Node right = null;
+
+  final Token token = null;
+
+  double visit(NodeVisitor visitor);
+}
+
+void printNode(Node root) {
+  var maxLevel = _maxLevel(root);
+  _printNodeInternal([root], 1, maxLevel);
+}
+
+void _printNodeInternal(List<Node> nodes, int level, int maxLevel) {
+  if (nodes.isEmpty || _isAllElementsNull(nodes)) return;
+
+  var floor = maxLevel - level;
+  var endgeLines = math.pow(2, math.max(floor - 1, 0)).toInt();
+  var firstSpaces = math.pow(2, floor).toInt() - 1;
+  var betweenSpaces = math.pow(2, floor + 1).toInt() - 1;
+
+  _printWhitespaces(firstSpaces);
+
+  var newNodes = <Node>[];
+
+  for (var node in nodes) {
+    if (node != null) {
+      stdout.write(node.token.value.toString());
+      newNodes.add(node.left);
+      newNodes.add(node.right);
+    } else {
+      newNodes.add(null);
+      newNodes.add(null);
+      stdout.write(' ');
+    }
+    _printWhitespaces(betweenSpaces);
+  }
+
+  stdout.writeln('');
+
+  for (var i = 1; i <= endgeLines; i++) {
+    for (var j = 0; j < nodes.length; j++) {
+      _printWhitespaces(firstSpaces - i);
+
+      if (nodes[j] == null) {
+        _printWhitespaces(endgeLines + endgeLines + i + 1);
+        continue;
+      }
+
+      if (nodes[j].left != null) {
+        stdout.write('/');
+      } else {
+        _printWhitespaces(2);
+      }
+
+      _printWhitespaces(i + i - 1);
+
+      if (nodes[j].right != null) {
+        stdout.write('\\');
+      } else {
+        _printWhitespaces(2);
+      }
+
+      _printWhitespaces(endgeLines + endgeLines - i);
+    }
+
+    stdout.writeln('');
+  }
+
+  _printNodeInternal(newNodes, level + 1, maxLevel);
+}
+
+void _printWhitespaces(int count) {
+  for (var i = 0; i < count; i++) {
+    stdout.write(' ');
+  }
+}
+
+int _maxLevel(Node node) {
+  return node == null
+      ? 0
+      : math.max(_maxLevel(node.left), _maxLevel(node.right)) + 1;
+}
+
+bool _isAllElementsNull<T>(List<T> list) {
+  for (Object object in list) {
+    if (object != null) return false;
+  }
+  return true;
+}
 
 abstract class NodeVisitor {
   const NodeVisitor();
@@ -8,19 +105,11 @@ abstract class NodeVisitor {
   double visitNum(Num node);
 }
 
-abstract class AST {
-  const AST();
-
-  Token get token;
-
-  double visit(NodeVisitor visitor);
-}
-
-class UnaryOp extends AST {
+class UnaryOp extends Node {
   UnaryOp(this.op, this.expr);
 
   final Token op;
-  final AST expr;
+  final Node expr;
 
   @override
   double visit(NodeVisitor visitor) => visitor.visitUnaryOp(this);
@@ -29,11 +118,13 @@ class UnaryOp extends AST {
   Token get token => op;
 }
 
-class BinOp extends AST {
-  const BinOp(this.esq, this.op, this.dir)
-      : assert(esq != null && op != null && dir != null);
+class BinOp<T> extends Node {
+  const BinOp(this.left, this.op, this.right)
+      : assert(left != null && op != null && right != null);
 
-  final AST esq, dir;
+  @override
+  final Node left, right;
+
   final Token op;
 
   @override
@@ -43,7 +134,7 @@ class BinOp extends AST {
   double visit(NodeVisitor visitor) => visitor.visitBinOp(this);
 }
 
-class Num extends AST {
+class Num extends Node {
   const Num(this.token) : assert(token != null);
 
   @override
@@ -79,8 +170,8 @@ class Parser {
     }
   }
 
-  /// [factor] : ([PLUS] | [MINUS]) [factor] | [NUMBER] | [LPAREN] [expr] [RPAREN]
-  AST factor() {
+  /// [factor] : ([PLUS] | [MINUS]) [factor] | [NUMBER] | [LPAREN] ([expr]) [RPAREN]
+  Node factor() {
     var token = currentToken;
 
     if (token.type == PLUS) {
@@ -106,9 +197,22 @@ class Parser {
     }
   }
 
-  /// [term] : [factor] (([MUL] | [DIV]) [factor])*
-  AST term() {
+  /// [exponent] : [factor] ([EXPONENT] [term])*
+  Node exponent() {
     var node = factor();
+
+    while (currentToken.type == EXPONENT) {
+      var token = currentToken;
+      eat(EXPONENT);
+      node = BinOp(node, token, expr());
+    }
+
+    return node;
+  }
+
+  /// [term] : [exponent] (([MUL] | [DIV]) [exponent])*
+  Node term() {
+    var node = exponent();
 
     while (currentToken.type == MUL || currentToken.type == DIV) {
       var token = currentToken;
@@ -119,14 +223,14 @@ class Parser {
         eat(DIV);
       }
 
-      node = BinOp(node, token, factor());
+      node = BinOp(node, token, exponent());
     }
 
     return node;
   }
 
   /// [expr] : [term] (([PLUS] | [MINUS]) [term])*
-  AST expr() {
+  Node expr() {
     var node = term();
 
     while (currentToken.type == PLUS || currentToken.type == MINUS) {
@@ -144,5 +248,5 @@ class Parser {
     return node;
   }
 
-  AST parse() => expr();
+  Node parse() => expr();
 }

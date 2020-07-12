@@ -1,4 +1,15 @@
-enum TokenType { NUMBER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, DOT, EOF }
+enum TokenType {
+  NUMBER,
+  PLUS,
+  MINUS,
+  MUL,
+  DIV,
+  LPAREN,
+  RPAREN,
+  DOT,
+  EOF,
+  EXPONENT
+}
 
 const NUMBER = TokenType.NUMBER;
 const PLUS = TokenType.PLUS;
@@ -9,6 +20,7 @@ const LPAREN = TokenType.LPAREN;
 const RPAREN = TokenType.RPAREN;
 const DOT = TokenType.DOT;
 const EOF = TokenType.EOF;
+const EXPONENT = TokenType.EXPONENT;
 
 class Token {
   const Token(this.type, this.value);
@@ -52,6 +64,18 @@ class Lexer {
       currentChar = null;
     } else {
       currentChar = text[pos];
+    }
+  }
+
+  String peek([int n = 1]) {
+    assert(n >= 1);
+
+    var pos = this.pos + n;
+
+    if (pos > text.length - 1) {
+      return null;
+    } else {
+      return text[pos] != ' ' ? text[pos] : peek(n + 1);
     }
   }
 
@@ -111,6 +135,11 @@ class Lexer {
       if (currentChar == '/') {
         advance();
         return Token(DIV, '/');
+      }
+
+      if (currentChar == '^') {
+        advance();
+        return Token(EXPONENT, '^');
       }
 
       if (currentChar == '(') {
