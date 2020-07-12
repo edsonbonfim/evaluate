@@ -197,14 +197,14 @@ class Parser {
     }
   }
 
-  /// [exponent] : [factor] ([EXPONENT] [term])*
+  /// [exponent] : [factor] ([EXPONENT] [expr])*
   Node exponent() {
     var node = factor();
 
     while (currentToken.type == EXPONENT) {
       var token = currentToken;
       eat(EXPONENT);
-      node = BinOp(node, token, expr());
+      node = BinOp(node, token, factor());
     }
 
     return node;

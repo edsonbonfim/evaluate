@@ -46,7 +46,7 @@ class Interpreter extends NodeVisitor {
 
   double interpret() {
     var tree = parser.parse();
-    printNode(tree);
+    // printNode(tree);
     return tree.visit(this);
   }
 }
